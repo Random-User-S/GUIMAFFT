@@ -4,6 +4,7 @@ import tempfile
 import os
 import matplotlib.pyplot as plt
 from Bio import Phylo
+from Bio.Align.Applications import MafftCommandline
 
 
 # File paths for MAFFT and IQTREE
@@ -40,7 +41,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Upload file section - allow multiple file uploads
 uploaded_files = st.file_uploader("Upload your FASTA file(s)", type=["fasta", "fa"], accept_multiple_files=True)
 
 # MAFFT Algorithm commands for concat
@@ -54,12 +54,14 @@ algorithm_options = {
 }
 
 if uploaded_files:
-    choice = st.radio("Choose alignment algorithm and click 'Run MAFFT Alignment'", list(algorithm_options.keys()), help="Choose the algorithm for MAFFT.")
+    choice = st.radio("Choose alignment algorithm and click 'Run MAFFT Alignment'", list(algorithm_options.keys()),
+                      help="Choose the algorithm for MAFFT.")
     selected_option = algorithm_options.get(choice, None)
     run_button = st.button("Run MAFFT Alignment")
 
     if run_button and selected_option:
         for uploaded_file in uploaded_files:
+            # Save the uploaded file to a temporary location
             with tempfile.NamedTemporaryFile(delete=False, suffix=".fasta") as temp_fasta:
                 temp_fasta.write(uploaded_file.read())
                 fasta_path = temp_fasta.name
@@ -68,16 +70,19 @@ if uploaded_files:
             status_message = st.empty()
             status_message.info(f"Running MAFFT alignment on {uploaded_file.name}...")
 
-            # Command concat
-            mafft_command = f"{mafft_path} {selected_option} {fasta_path} > {output_path}"
-            subprocess.run(mafft_command, shell=True)
+            # Set up MAFFT command line with selected options
+            mafft_cline = MafftCommandline(input=fasta_path, options=selected_option)
 
-            status_message.success(f"MAFFT alignment completed for {uploaded_file.name}!", icon="✅")
+            try:
+                # Execute MAFFT and capture output
+                stdout, stderr = mafft_cline()
+                with open(output_path, 'w') as aligned_file:
+                    aligned_file.write(stdout)
 
-            if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                status_message.success(f"MAFFT alignment completed for {uploaded_file.name}!", icon="✅")
+
                 # Store alignment in session state to prevent reset
-                with open(output_path) as aligned_file:
-                    st.session_state[f"aligned_{uploaded_file.name}"] = aligned_file.read()
+                st.session_state[f"aligned_{uploaded_file.name}"] = stdout
 
                 # Display alignment results and download button
                 st.sidebar.subheader(f"Alignment Results for {uploaded_file.name}")
@@ -86,7 +91,8 @@ if uploaded_files:
                 st.download_button(f"Download Aligned {uploaded_file.name}",
                                    data=st.session_state[f"aligned_{uploaded_file.name}"],
                                    file_name=f"aligned_{uploaded_file.name}", mime="text/fasta")
-
+            except Exception as e:
+                status_message.error(f"MAFFT alignment failed for {uploaded_file.name}: {str(e)}")
 # IQ-TREE options
 if uploaded_files and any(f"aligned_{file.name}" in st.session_state for file in uploaded_files):
     iqtree_options = st.radio("Choose IQ-TREE model", ["Auto", "GTR+G", "HKY", "JC"],
