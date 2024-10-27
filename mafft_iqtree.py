@@ -7,8 +7,8 @@ from Bio import Phylo
 
 
 # File paths for MAFFT and IQTREE
-mafft_path = "mafft"
-iqtree_path = "iqtree"
+mafft_path = "GUIMAFFT/mafft.bat"
+iqtree_path = "GUIMAFFT/iqtree"
 
 # Formatting
 st.markdown(
