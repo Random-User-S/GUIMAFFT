@@ -7,7 +7,7 @@ from Bio import Phylo
 
 
 # File paths for MAFFT and IQTREE
-mafft_path = "mafft.bat"
+mafft_path = "mafft"
 iqtree_path = "iqtree"
 
 # Formatting
