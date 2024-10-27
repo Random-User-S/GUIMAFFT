@@ -43,23 +43,22 @@ st.markdown(
 
 uploaded_files = st.file_uploader("Upload your FASTA file(s)", type=["fasta", "fa"], accept_multiple_files=True)
 
-# MAFFT Algorithm commands for concat
 algorithm_options = {
-    "--auto": "--auto",
-    "FFT-NS-1 (fast)": "--retree 1",
-    "FFT-NS-2 (default)": "--retree 2",
-    "G-INS-i (accurate)": "--globalpair --maxiterate 16",
-    "L-INS-i (accurate)": "--localpair --maxiterate 16",
-    "E-INS-i (accurate)": "--genafpair --maxiterate 16"
+    "--auto": {},
+    "FFT-NS-1 (fast)": {"retree": 1},
+    "FFT-NS-2 (default)": {"retree": 2},
+    "G-INS-i (accurate)": {"globalpair": True, "maxiterate": 16},
+    "L-INS-i (accurate)": {"localpair": True, "maxiterate": 16},
+    "E-INS-i (accurate)": {"genafpair": True, "maxiterate": 16}
 }
 
 if uploaded_files:
     choice = st.radio("Choose alignment algorithm and click 'Run MAFFT Alignment'", list(algorithm_options.keys()),
                       help="Choose the algorithm for MAFFT.")
-    selected_option = algorithm_options.get(choice, None)
+    selected_options = algorithm_options.get(choice, None)
     run_button = st.button("Run MAFFT Alignment")
 
-    if run_button and selected_option:
+    if run_button and selected_options is not None:
         for uploaded_file in uploaded_files:
             # Save the uploaded file to a temporary location
             with tempfile.NamedTemporaryFile(delete=False, suffix=".fasta") as temp_fasta:
@@ -71,7 +70,7 @@ if uploaded_files:
             status_message.info(f"Running MAFFT alignment on {uploaded_file.name}...")
 
             # Set up MAFFT command line with selected options
-            mafft_cline = MafftCommandline(input=fasta_path, options=selected_option)
+            mafft_cline = MafftCommandline(input=fasta_path, **selected_options)
 
             try:
                 # Execute MAFFT and capture output
@@ -93,6 +92,8 @@ if uploaded_files:
                                    file_name=f"aligned_{uploaded_file.name}", mime="text/fasta")
             except Exception as e:
                 status_message.error(f"MAFFT alignment failed for {uploaded_file.name}: {str(e)}")
+
+
 # IQ-TREE options
 if uploaded_files and any(f"aligned_{file.name}" in st.session_state for file in uploaded_files):
     iqtree_options = st.radio("Choose IQ-TREE model", ["Auto", "GTR+G", "HKY", "JC"],
